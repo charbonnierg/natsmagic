@@ -44,6 +44,16 @@ NATS_MAGIC_URL="http://localhost:9000/server-01.natsmagic.json" ./natsmagic
 2023-08-29T17:21:57.109+0200    INFO    nats    server/server.go:2207   TLS required for client connections
 2023-08-29T17:21:57.109+0200    INFO    nats    server/server.go:1989   Server is ready
 ```
+
+## Objectives
+
+- [x] Automatic TLS encryption for standard NATS connections
+- [x] Automatic TLS encryption for monitoring HTTP connections
+- [x] Automatic TLS encryption for leafnode connections
+- [x] Automatic TLS encryption for websocket connections
+- [x] Automatic TLS encryption for MQTT connections
+- [x] Automatic TLS encryption with mTLS auth for cluster gossip connections
+
 ## How to use ?
 
 This tool should be mostly compatible with NATS server, use the `--help` option to list allowed options.
@@ -192,3 +202,12 @@ NATS_MAGIC_URL="http://localhost:9000" NATS_MAGIC_SERVER="SUAA7U6QLN252MI44J3RU5
 
 > The value provided to `NATS_MAGIC_SERVER` here is a Nkey seed. It is never exhanged with remote hosts, and remain secrete to the caller and the process.
 > This nkey seed is used to sign the nonce when authenticating against Magic Server. Note that in order for the request to succeed, a configuration must have been declared for the public key associated to this nkey seed BEFORE starting the `natsmagic` process.
+
+## Mutual TLS for Cluster routes
+
+If cluster mode is enabled and either `domains` are provided through config file or `NATS_MAGIC_DOMAINS` is provided through environment variable, mTLS will be enabled for cluster routes.
+
+Nodes with certificates issued by a trusted CA with a SAN matching a route entry will be allowed to connect.
+
+> Note: In order for two servers to be allowed to connect, a route entry must be created for both servers, else TLS handshake will fail.
+

@@ -2,6 +2,7 @@ package magicopts
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -307,7 +308,24 @@ func (o *NatsMagic) UpdateNatsServerOptions(magic *certmagic.Config, serverOptio
 	serverOptions.Websocket.NoTLS = false
 	serverOptions.MQTT.TLSConfig = tlsConfig.Clone()
 	serverOptions.TLSConfig = tlsConfig.Clone()
+	serverOptions.TLS = true
 	serverOptions.TLSVerify = false
+	// Cluster TLS config
+	// In order for a server to connect to a cluster, it must have a valid TLS cert
+	// with a SAN that matches the route entry in the cluster configuration.
+	certs, err := magic.ClientCredentials(context.TODO(), o.DefaultDomains)
+	if err != nil {
+		return err
+	}
+	serverOptions.Cluster.TLSConfig = tlsConfig.Clone()
+	serverOptions.Cluster.TLSConfig.GetCertificate = nil
+	serverOptions.Cluster.TLSConfig.ClientCAs = nil
+	serverOptions.Cluster.TLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
+	serverOptions.Cluster.TLSCheckKnownURLs = true
+	serverOptions.Cluster.TLSPinnedCerts = nil
+	serverOptions.Cluster.TLSMap = false
+	serverOptions.Cluster.TLSConfig.Certificates = certs
+
 	return nil
 }
 
