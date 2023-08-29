@@ -8,7 +8,10 @@ import (
 	"html/template"
 	"os"
 	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/caddyserver/certmagic"
 	"github.com/charbonnierg-dev/natsmagic/magicrepo"
@@ -71,6 +74,7 @@ type NatsMagic struct {
 	LetsEncryptEmail       string      `json:"letsencrypt_email"`
 	LetsEncryptCA          string      `json:"letsencrypt_ca"`
 	LetsEncryptDnsProvider DnsProvider `json:"letsencrypt_dns_provider"`
+	LetsEncryptDataDir     string      `json:"letsencrypt_data_dir"`
 	// Global options
 	DefaultDomains []string `json:"domains"`
 	// NATS Standard server with TLS enabled
@@ -115,6 +119,9 @@ func (o *NatsMagic) SetDefaultValues() *NatsMagic {
 	}
 	if o.LoggingPreset != "production" {
 		o.LoggingPreset = "development"
+	}
+	if o.LetsEncryptDataDir == "" {
+		o.LetsEncryptDataDir = defaultDataDir()
 	}
 	return o
 }
@@ -164,6 +171,21 @@ func (o *NatsMagic) GetDns01Solver() (*certmagic.DNS01Solver, error) {
 			DNSProvider: &digitalocean.Provider{
 				APIToken: dotoken,
 			},
+			// FIXME: This is a temporary hack to work around the fact that
+			// digital ocean DNS resolvers are blocked in most of environments
+			// we work with. This should be configurable, but ideally a single
+			// parameter would allow sane values for those 3 parameters:
+			// The TTL for the TXT records created during the DNS-01 challenge.
+			TTL: time.Second * 30,
+			// How long to wait before finalizing order.
+			// I.E, how long to wait before we estimate that DNS records are created
+			PropagationDelay: time.Second * 15,
+			// Maximum time to wait for temporary DNS record to appear.
+			// Set to -1 to disable propagation checks.
+			// When disabled, a request to finalize order is sent to LetsEncrypt regardless
+			// of DNS propagation status. This could lead to failed validations, which in turn
+			// could lead to rate limiting.
+			PropagationTimeout: -1,
 		}, nil
 	}
 	if o.LetsEncryptDnsProvider == Azure {
@@ -274,6 +296,7 @@ func (o *NatsMagic) GetCertmagicConfig() (*certmagic.Config, error) {
 		return nil, fmt.Errorf("failed to create certmagic dns01 solver: %s", err.Error())
 	}
 	// Configure cert-magic
+	certmagic.Default.Storage = &certmagic.FileStorage{Path: o.LetsEncryptDataDir}
 	certmagic.Default.Logger = o.GetLogger("certmagic")
 	certmagic.DefaultACME.Agreed = true
 	certmagic.DefaultACME.CA = o.LetsEncryptCA
@@ -574,4 +597,31 @@ NKEYs are sensitive and should be treated as secrets.
 		panic(err)
 	}
 	return filepath
+}
+
+func defaultDataDir() string {
+	baseDir := filepath.Join(homeDir(), ".local", "share")
+	if xdgData := os.Getenv("XDG_DATA_HOME"); xdgData != "" {
+		baseDir = xdgData
+	}
+	return filepath.Join(baseDir, "certmagic")
+}
+
+// homeDir returns the best guess of the current user's home
+// directory from environment variables. If unknown, "." (the
+// current directory) is returned instead.
+func homeDir() string {
+	home := os.Getenv("HOME")
+	if home == "" && runtime.GOOS == "windows" {
+		drive := os.Getenv("HOMEDRIVE")
+		path := os.Getenv("HOMEPATH")
+		home = drive + path
+		if drive == "" || path == "" {
+			home = os.Getenv("USERPROFILE")
+		}
+	}
+	if home == "" {
+		home = "."
+	}
+	return home
 }
