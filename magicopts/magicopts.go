@@ -340,14 +340,20 @@ func (o *NatsMagic) UpdateNatsServerOptions(magic *certmagic.Config, serverOptio
 	if err != nil {
 		return err
 	}
+	// Cluster TLS configs
 	serverOptions.Cluster.TLSConfig = tlsConfig.Clone()
 	serverOptions.Cluster.TLSConfig.GetCertificate = nil
-	serverOptions.Cluster.TLSConfig.ClientCAs = nil
 	serverOptions.Cluster.TLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
 	serverOptions.Cluster.TLSCheckKnownURLs = true
-	serverOptions.Cluster.TLSPinnedCerts = nil
-	serverOptions.Cluster.TLSMap = false
+	serverOptions.Cluster.TLSMap = true
 	serverOptions.Cluster.TLSConfig.Certificates = certs
+	// Gateway TLS config
+	serverOptions.Gateway.TLSConfig = tlsConfig.Clone()
+	serverOptions.Gateway.TLSConfig.GetCertificate = nil
+	serverOptions.Gateway.TLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
+	serverOptions.Gateway.TLSCheckKnownURLs = true
+	serverOptions.Gateway.TLSMap = true
+	serverOptions.Gateway.TLSConfig.Certificates = certs
 
 	return nil
 }
