@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Generated schema for Root",
+  "type": "object",
+  "properties": {
+    "domains": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "letsencrypt_email": {
+      "type": "string"
+    },
+    "letsencrypt_ca": {
+      "type": "string"
+    },
+    "letsencrypt_dns_provider": {
+      "type": "string"
+    },
+    "letsencrypt_dns_auth": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "remote_users": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "logging_preset": {
+      "type": "string"
+    },
+    "nats_config": {
+      "type": "object",
+      "properties": {
+        "server_name": {
+          "type": "string"
+        },
+        "port": {
+          "type": "number"
+        },
+        "host": {
+          "type": "string"
+        },
+        "jetstream": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "domain": {
+              "type": "string"
+            },
+            "max_memory_store": {
+              "type": "number"
+            },
+            "max_file_store": {
+              "type": "number"
+            }
+          }
+        },
+        "websocket": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": "number"
+            }
+          }
+        },
+        "mqtt": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "host": {
+              "type": "string"
+            },
+            "port": {
+              "type": "number"
+            }
+          }
+        },
+        "leafnodes": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "remotes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "url": {
+                    "type": "string"
+                  },
+                  "account": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "operator": {
+          "type": "string"
+        },
+        "system_account": {
+          "type": "string"
+        },
+        "resolver": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "dir": {
+              "type": "string"
+            },
+            "allow_delete": {
+              "type": "boolean"
+            },
+            "interval": {
+              "type": "string"
+            }
+          }
+        },
+        "resolver_preload": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "domains",
+    "letsencrypt_email",
+    "letsencrypt_dns_provider"
+  ]
+}
