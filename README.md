@@ -2,6 +2,48 @@
 
 A wrapper around [NATS server](https://github.com/nats-io/nats-server) which automates TLS certificates provisioning and renewal using [Certmagic](https://github.com/caddyserver/certmagic).
 
+```bash
+NATS_MAGIC_URL="http://localhost:9000/server-01.natsmagic.json" ./natsmagic
+```
+```bash
+2023-08-29T17:21:57.102+0200    INFO    natsmagic       natsmagic/natsmagic.go:108      saved config file to /tmp/nats-server954632112
+2023-08-29T17:21:57.104+0200    INFO    certmagic.maintenance   certmagic@v0.17.2/maintain.go:59        started background certificate maintenance   {"cache": "0xc0002c2380"}
+2023-08-29T17:21:57.104+0200    DEBUG   certmagic       certmagic@v0.17.2/cache.go:243  added certificate to cache      {"subjects": ["nats.example.com"], "expiration": "2023-11-27T08:42:22.000Z", "managed": true, "issuer_key": "acme-v02.api.letsencrypt.org-directory", "hash": "9d97ed29183f98b0f1856c2d21d46554e055a051d7c590b010995e709c339c1b", "cache_size": 1, "cache_capacity": 0}
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1705   Starting nats-server
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1716     Version:  2.9.21
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1717     Git:      [not set]
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1720     Cluster:  cluster-01
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1722     Name:     nats-01
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1724     Node:     pZeTdFV7
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1726     ID:       NCRWNFAQZIWFK5Y3VTHMPVM3B7M6M2PHKQPQFCNP4YNDZQCU5FKSH4KZ
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1755   Using configuration file: /tmp/nats-server954632112
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1760   Trusted Operators
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1763     System  : ""
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1764     Operator: "test-operator"
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1765     Issued  : 2023-08-29 00:07:02 +0200 CEST
+2023-08-29T17:21:57.107+0200    INFO    nats    server/server.go:1768     Expires : Never
+2023-08-29T17:21:57.107+0200    INFO    nats    server/accounts.go:4160 Managing all jwt in exclusive directory /jwt
+2023-08-29T17:21:57.107+0200    INFO    nats    server/jetstream.go:179 Starting JetStream
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:366     _ ___ _____ ___ _____ ___ ___   _   __  __
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:367  _ | | __|_   _/ __|_   _| _ \ __| /_\ |  \/  |
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:368 | || | _|  | | \__ \ | | |   / _| / _ \| |\/| |
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:369  \__/|___| |_| |___/ |_| |_|_\___/_/ \_\_|  |_|
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:370
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:371          https://docs.nats.io/jetstream
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:372
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:373 ---------------- JETSTREAM ----------------
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:374   Max Memory:      1.00 GB
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:375   Max Storage:     1.00 GB
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:376   Store Directory: "/tmp/jetstream"
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:378   Domain:          cluster-01
+2023-08-29T17:21:57.108+0200    INFO    nats    server/jetstream.go:384 -------------------------------------------
+2023-08-29T17:21:57.108+0200    INFO    nats    server/websocket.go:1100        Listening for websocket clients on wss://0.0.0.0:10443
+2023-08-29T17:21:57.108+0200    INFO    nats    server/leafnode.go:670  Listening for leafnode connections on 0.0.0.0:7222
+2023-08-29T17:21:57.109+0200    INFO    nats    server/mqtt.go:409      Listening for MQTT clients on tls://0.0.0.0:8883
+2023-08-29T17:21:57.109+0200    INFO    nats    server/server.go:2202   Listening for client connections on 127.0.0.1:4222
+2023-08-29T17:21:57.109+0200    INFO    nats    server/server.go:2207   TLS required for client connections
+2023-08-29T17:21:57.109+0200    INFO    nats    server/server.go:1989   Server is ready
+```
 ## How to use ?
 
 This tool should be mostly compatible with NATS server, use the `--help` option to list allowed options.
@@ -86,7 +128,7 @@ Advanced example:
             "token": "eyJhbGciOiJlZDI1NTE5LW5rZXkiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiU1lTIiwic3ViIjoiVUIzR0Q3SVFKUVhESlhLVFYzNFVQSTJSWkVTR1hFR1ozRUtTQUVCRlhBWldJTlE0RTdLR0ZHNFIiLCJpc3MiOiJBQlFDNEJDQkdZSkVZR1c1RExSRlUzWVVSN1laQ1NPWDZPRVZHMjZTQU5GUEFWVVlIQVQ0VEhHVCIsImp0aSI6IkdYTk1TVFRFMkhMQkpXTTZDWlhXTDZCVFZTMkhYTlA2WkM3SEIzWUNZRUVDVkpSWUlWQkEiLCJpYXQiOjE2OTMyNjA0MjIsIm5hdHMiOnsidHlwZSI6InVzZXIiLCJ2ZXJzaW9uIjoyLCJpc3N1ZXJfYWNjb3VudCI6IkFETlUyUVJYQkQ0WktQSkJYMlc0R1BZSVpQSk5VMjVJVkM2N1RQQVJFMjI3NTVLTE40SlNKUlFIIn19.Qs4u3ehBkO96ZmvPGltbC8vYZxpu57-Oa8FeP9bDsk0HtY0Jghu50ZDkvl3iL5dN471X5eT9uz0dJHc1cBS_Bg"
         }
     },
-    "logging_preset": "production",
+    "logging_preset": "development",
     "nats_config": {
         "server_name": "leaf-01",
         "port": 4224,

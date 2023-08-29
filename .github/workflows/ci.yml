@@ -68,5 +68,5 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags: charbonnierg/natsmagic:${{ github.ref_name }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/natsmagic:${{ github.ref_name }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
