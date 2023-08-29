@@ -52,7 +52,8 @@ NATS_MAGIC_URL="http://localhost:9000/server-01.natsmagic.json" ./natsmagic
 - [x] Automatic TLS encryption for leafnode connections
 - [x] Automatic TLS encryption for websocket connections
 - [x] Automatic TLS encryption for MQTT connections
-- [x] Automatic TLS encryption with mTLS auth for cluster gossip connections
+- [x] Automatic TLS encryption with mTLS auth for cluster connections
+- [x] Automatic TLS encryption with mTLS auth for gateway connections
 
 ## How to use ?
 
