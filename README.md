@@ -1,7 +1,12 @@
+<a href="https://hub.docker.com/r/gucharbon/natsmagic">
+<img alt="Docker Image Size (tag)" src="https://img.shields.io/docker/image-size/gucharbon/natsmagic/v2.9.21-dev.20230829">
+</a> <a href="https://hub.docker.com/r/gucharbon/natsmagic"><img alt="Docker Image Tag" src="https://img.shields.io/docker/v/gucharbon/natsmagic/v2.9.21-dev.20230829"></a>
+
+
 # Proof-of-concept: `natsmagic`
 
 A wrapper around [NATS server](https://github.com/nats-io/nats-server) which automates TLS certificates provisioning and renewal using [Certmagic](https://github.com/caddyserver/certmagic).
-
+;
 ```bash
 NATS_MAGIC_URL="http://localhost:9000/server-01.natsmagic.json" ./natsmagic
 ```
