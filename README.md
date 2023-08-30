@@ -198,7 +198,9 @@ only the derived NATS configuration is written to temporary file storage (so sec
 In order for `natsmagic` to obtain a configuration file, it must first send a request for a given public key, receive a nonce from the server, and finally send another request with a signature for the nonce. If signature is considered valid by the Magic Server, a configuration is returned as a JSON response. If signature is invalid, or if Magic Server do not reply with expected status code, `natsmagic` will fail to start.
 
 ```bash
-NATS_MAGIC_URL="http://localhost:9000" NATS_MAGIC_SERVER="SUAA7U6QLN252MI44J3RU5SE3AEEKLOW4C6XWH25DAQC7JHRNSZJB2W5PQ" natsmagic
+export NATS_MAGIC_URL="http://localhost:9000"
+export NATS_MAGIC_SERVER="SUAA7U6QLN252MI44J3RU5SE3AEEKLOW4C6XWH25DAQC7JHRNSZJB2W5PQ"
+natsmagic
 ```
 
 > The value provided to `NATS_MAGIC_SERVER` here is a Nkey seed. It is never exhanged with remote hosts, and remain secrete to the caller and the process.
