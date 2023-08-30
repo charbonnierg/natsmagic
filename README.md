@@ -206,6 +206,33 @@ natsmagic
 > The value provided to `NATS_MAGIC_SERVER` here is a Nkey seed. It is never exhanged with remote hosts, and remain secrete to the caller and the process.
 > This nkey seed is used to sign the nonce when authenticating against Magic Server. Note that in order for the request to succeed, a configuration must have been declared for the public key associated to this nkey seed BEFORE starting the `natsmagic` process.
 
+The authorization is like:
+
+```bash
+ENV <====== CLIENT ===========> SERVER
+  Read nkey from env ||
+  <=================//
+  ||
+  || Extract public key
+  || and private key 
+  \\===============\\
+                    || Send public key
+                    \\==============>
+                                    ||
+                        Send nonce  ||
+                 <==================//
+                 ||
+                 || Sign nonce using
+                 || private key
+                 \\ ================>
+                                    ||
+                        Verify nonce using public key
+                                    ||
+            Send configuration file ||
+                 <==================//
+                                   
+```
+
 ## Mutual TLS for Cluster routes
 
 If cluster mode is enabled and either `domains` are provided through config file or `NATS_MAGIC_DOMAINS` is provided through environment variable, mTLS will be enabled for cluster routes.
@@ -214,3 +241,6 @@ Nodes with certificates issued by a trusted CA with a SAN matching a route entry
 
 > Note: In order for two servers to be allowed to connect, a route entry must be created for both servers, else TLS handshake will fail.
 
+## Mutual TLS for Gateway routes
+
+Just like for cluster mode, mTLS is enabled for gateway routes if at least one domain is configured.
