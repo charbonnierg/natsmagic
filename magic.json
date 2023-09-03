@@ -1,0 +1,34 @@
+{
+    "letsencrypt_data_dir": "/tmp/letsencrypt",
+    "letsencrypt_ca": "https://acme-staging-v02.api.letsencrypt.org/directory",
+    "logging_preset": "development",
+    "nats": {
+        "server_name": "quara-europe-nats-01",
+        "server_tags": [
+            "rg:europe",
+            "az:az1"
+        ],
+        "port": 4222,
+        "client_advertise": "nats-01.az.europe.msg.broker:4222",
+        "jetstream": {
+            "unique_tag": "az:",
+            "max_memory_store": 1073741824,
+            "max_file_store": 1073741824,
+            "store_dir": "/tmp/nats"
+        },
+        "leafnodes": {
+            "port": 7222,
+            "advertise": "nats-01.az.europe.msg.broker:7222"
+        },
+        "websocket": {
+            "port": 443,
+            "advertise": "nats-01.az.europe.msg.broker:443"
+        },
+        "mqtt": {
+            "port": 8883
+        }
+    },
+    "nats_exporter": {
+        "port": 9000
+    }
+}

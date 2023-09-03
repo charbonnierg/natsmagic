@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	magic "github.com/charbonnierg-dev/natsmagic/magicopts"
+	magic "github.com/charbonnierg/natsmagic/magicopts"
 )
 
 func TestMarshallMagicOptions(t *testing.T) {

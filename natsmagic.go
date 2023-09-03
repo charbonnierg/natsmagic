@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charbonnierg-dev/natsmagic/magicopts"
+	"github.com/charbonnierg/natsmagic/magicopts"
 	"github.com/nats-io/nats-server/v2/server"
 	"go.uber.org/automaxprocs/maxprocs"
 )

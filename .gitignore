@@ -6,6 +6,8 @@
 *.srl
 # Test web content
 /www
+.venv/
+examples/
 # Binary
 /natsmagic
 gmon.out

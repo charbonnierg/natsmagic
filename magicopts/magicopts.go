@@ -10,13 +10,17 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
+	// import the API like this
 	"github.com/caddyserver/certmagic"
-	"github.com/charbonnierg-dev/natsmagic/magicrepo"
-	"github.com/charbonnierg-dev/natsmagic/natslogger"
-	"github.com/libdns/azure"
+	"github.com/charbonnierg/azure"
+	"github.com/charbonnierg/natsmagic/magicrepo"
+	"github.com/charbonnierg/natsmagic/natslogger"
+	"github.com/charbonnierg/prometheus-nats-exporter/collector"
+	"github.com/charbonnierg/prometheus-nats-exporter/exporter"
 	"github.com/libdns/digitalocean"
 	"github.com/libdns/route53"
 	"github.com/nats-io/nats-server/v2/server"
@@ -26,18 +30,22 @@ import (
 
 func New() (*NatsMagic, error) {
 	opts := &NatsMagic{
-		LetsEncryptEmail:       os.Getenv("NATS_MAGIC_EMAIL"),
-		LetsEncryptCA:          os.Getenv("NATS_MAGIC_CA"),
-		LetsEncryptDnsProvider: NewDnsProviderFromString(os.Getenv("NATS_MAGIC_PROVIDER")),
-		DefaultDomains:         getCommaSeparateEnv("NATS_MAGIC_DOMAINS"),
-		StandardDomains:        getCommaSeparateEnv("NATS_MAGIC_STANDARD_DOMAINS"),
-		LeafnodeDomains:        getCommaSeparateEnv("NATS_MAGIC_LEAFNODE_DOMAINS"),
-		MonitoringDomains:      getCommaSeparateEnv("NATS_MAGIC_MONITORING_DOMAINS"),
-		WebsocketDomains:       getCommaSeparateEnv("NATS_MAGIC_WEBSOCKET_DOMAINS"),
-		MQTTDomains:            getCommaSeparateEnv("NATS_MAGIC_MQTT_DOMAINS"),
-		LoggingPreset:          os.Getenv("NATS_LOGGING_PRESET"),
+		LetsEncryptEmail:                   os.Getenv("NATS_MAGIC_EMAIL"),
+		LetsEncryptCA:                      os.Getenv("NATS_MAGIC_CA"),
+		LetsEncryptDnsProvider:             NewDnsProviderFromString(os.Getenv("NATS_MAGIC_PROVIDER")),
+		LetsEncryptDnsSkipPropagationCheck: getBoolEnv("NATS_MAGIC_SKIP_DNS_PROPAGATION_CHECK"),
+		LetsEncryptDnsPropagationDelay:     getIntegerEnv("NATS_MAGIC_DNS_PROPAGATION_DELAY"),
+		LetsEncryptDnsPropagationTimeout:   getIntegerEnv("NATS_MAGIC_DNS_PROPAGATION_TIMEOUT"),
+		LetsEncryptDnsChallengeTTL:         getIntegerEnv("NATS_MAGIC_DNS_CHALLENGE_TTL"),
+		LetsEncryptDnsResolvers:            getCommaSeparateEnv("NATS_MAGIC_DNS_RESOLVERS"),
+		DefaultDomains:                     getCommaSeparateEnv("NATS_MAGIC_DOMAINS"),
+		StandardDomains:                    getCommaSeparateEnv("NATS_MAGIC_STANDARD_DOMAINS"),
+		LeafnodeDomains:                    getCommaSeparateEnv("NATS_MAGIC_LEAFNODE_DOMAINS"),
+		MonitoringDomains:                  getCommaSeparateEnv("NATS_MAGIC_MONITORING_DOMAINS"),
+		WebsocketDomains:                   getCommaSeparateEnv("NATS_MAGIC_WEBSOCKET_DOMAINS"),
+		MQTTDomains:                        getCommaSeparateEnv("NATS_MAGIC_MQTT_DOMAINS"),
+		LoggingPreset:                      os.Getenv("NATS_LOGGING_PRESET"),
 	}
-	opts.SetDefaultValues()
 	magicOptsUrl := os.Getenv("NATS_MAGIC_URL")
 	if magicOptsUrl != "" {
 		err := readNatsMagicFromUrl(magicOptsUrl, opts)
@@ -52,6 +60,7 @@ func New() (*NatsMagic, error) {
 			return nil, err
 		}
 	}
+	opts.SetDefaultValues()
 	err := opts.unsafeUpdateNatsConfig()
 	if err != nil {
 		return nil, err
@@ -63,39 +72,59 @@ func New() (*NatsMagic, error) {
 	return opts, nil
 }
 
+type NatsExporterFeatures struct {
+	Varz          bool `json:"varz"`
+	Connz         bool `json:"connz"`
+	ConnzDetailed bool `json:"connz_detailed"`
+	Subz          bool `json:"subz"`
+	Routez        bool `json:"routez"`
+	Healthz       bool `json:"healthz"`
+	Gatewayz      bool `json:"gatewayz"`
+	Leafz         bool `json:"leafz"`
+}
+type NatsExporterOptions struct {
+	Host     string                `json:"host"`
+	Port     int                   `json:"port"`
+	Features *NatsExporterFeatures `json:"features"`
+}
+
+type NatsConfig = map[string]interface{}
+
 type NatsMagic struct {
 	logger          *zap.Logger
 	atom            *zap.AtomicLevel
 	remoteUserCreds map[string]string
 	// Nats server options
-	NatsConfig    map[string]interface{} `json:"nats_config"`
-	LoggingPreset string                 `json:"logging_preset"`
+	NatsConfig         NatsConfig           `json:"nats"`
+	NatsExporterConfig *NatsExporterOptions `json:"nats_exporter"`
+	LoggingPreset      string               `json:"logging_preset"`
 	// LetsEncrypt options
-	LetsEncryptEmail       string      `json:"letsencrypt_email"`
-	LetsEncryptCA          string      `json:"letsencrypt_ca"`
-	LetsEncryptDnsProvider DnsProvider `json:"letsencrypt_dns_provider"`
-	LetsEncryptDataDir     string      `json:"letsencrypt_data_dir"`
+	LetsEncryptEmail                   string            `json:"letsencrypt_email"`
+	LetsEncryptCA                      string            `json:"letsencrypt_ca"`
+	LetsEncryptDnsProvider             DnsProvider       `json:"letsencrypt_dns_provider"`
+	LetsEncryptDataDir                 string            `json:"letsencrypt_data_dir"`
+	LetsEncryptDnsSkipPropagationCheck bool              `json:"letsencrypt_dns_skip_propagation_check"`
+	LetsEncryptDnsPropagationDelay     int               `json:"letsencrypt_dns_propagation_delay"`
+	LetsEncryptDnsPropagationTimeout   int               `json:"letsencrypt_dns_propagation_timeout"`
+	LetsEncryptDnsChallengeTTL         int               `json:"letsencrypt_dns_challenge_ttl"`
+	LetsEncryptDnsResolvers            []string          `json:"letsencrypt_dns_resolvers"`
+	LetsEncryptDnsAuth                 map[string]string `json:"letsencrypt_dns_auth"`
 	// Global options
-	DefaultDomains []string `json:"domains"`
-	// NATS Standard server with TLS enabled
-	StandardDomains []string `json:"standard_domains"`
-	// Enable Leafnodes
-	LeafnodeDomains []string `json:"leafnode_domains"`
-	// HTTP Monitoring with TLS enabled
-	MonitoringDomains []string `json:"monitoring_domains"`
-	// Enable Websocket server
-	WebsocketDomains []string `json:"websocket_domains"`
-	// Enable MQTT server
-	MQTTDomains []string `json:"mqtt_domains"`
-	// Remote system user for leafnode system account connections
-	RemoteUsers map[string]*RemoteUser `json:"remote_users"`
-	// DNS Providers
-	LetsEncryptDnsAuth map[string]string `json:"letsencrypt_dns_auth"`
-	// TODO: Add Azure and Route53 providers
+	DefaultDomains    []string               `json:"domains"`
+	StandardDomains   []string               `json:"standard_domains"`
+	LeafnodeDomains   []string               `json:"leafnode_domains"`
+	MonitoringDomains []string               `json:"monitoring_domains"`
+	WebsocketDomains  []string               `json:"websocket_domains"`
+	MQTTDomains       []string               `json:"mqtt_domains"`
+	RemoteUsers       map[string]*RemoteUser `json:"remote_users"`
 }
 
 func (o *NatsMagic) Enabled() bool {
 	return len(o.DefaultDomains) > 0
+}
+
+func (o *NatsMagic) ExporterEnabled() bool {
+	return o.NatsExporterConfig != nil
 }
 
 func (o *NatsMagic) SetDefaultValues() *NatsMagic {
@@ -122,6 +151,29 @@ func (o *NatsMagic) SetDefaultValues() *NatsMagic {
 	}
 	if o.LetsEncryptDataDir == "" {
 		o.LetsEncryptDataDir = defaultDataDir()
+	}
+	if o.NatsExporterConfig != nil {
+		if o.NatsExporterConfig.Host == "" {
+			o.NatsExporterConfig.Host = "0.0.0.0"
+		}
+		if o.NatsExporterConfig.Features == nil {
+			o.NatsExporterConfig.Features = &NatsExporterFeatures{
+				Varz:          true,
+				Connz:         true,
+				ConnzDetailed: true,
+				Subz:          true,
+				Routez:        true,
+				Healthz:       true,
+				Gatewayz:      true,
+				Leafz:         true,
+			}
+		}
+	}
+	if o.LetsEncryptDnsChallengeTTL == 0 {
+		o.LetsEncryptDnsChallengeTTL = 60
+	}
+	if o.LetsEncryptDnsPropagationTimeout == 0 {
+		o.LetsEncryptDnsPropagationDelay = 60
 	}
 	return o
 }
@@ -154,6 +206,7 @@ func (o *NatsMagic) GetDomains() []string {
 }
 
 func (o *NatsMagic) GetDns01Solver() (*certmagic.DNS01Solver, error) {
+	var provider certmagic.ACMEDNSProvider
 	if o.LetsEncryptDnsProvider == DigitalOcean {
 		dotoken := os.Getenv("DO_TOKEN")
 		if dotoken == "" {
@@ -167,44 +220,35 @@ func (o *NatsMagic) GetDns01Solver() (*certmagic.DNS01Solver, error) {
 			}
 			dotoken = string(token)
 		}
-		return &certmagic.DNS01Solver{
-			DNSProvider: &digitalocean.Provider{
-				APIToken: dotoken,
-			},
-			// FIXME: This is a temporary hack to work around the fact that
-			// digital ocean DNS resolvers are blocked in most of environments
-			// we work with. This should be configurable, but ideally a single
-			// parameter would allow sane values for those 3 parameters:
-			// The TTL for the TXT records created during the DNS-01 challenge.
-			TTL: time.Second * 30,
-			// How long to wait before finalizing order.
-			// I.E, how long to wait before we estimate that DNS records are created
-			PropagationDelay: time.Second * 15,
-			// Maximum time to wait for temporary DNS record to appear.
-			// Set to -1 to disable propagation checks.
-			// When disabled, a request to finalize order is sent to LetsEncrypt regardless
-			// of DNS propagation status. This could lead to failed validations, which in turn
-			// could lead to rate limiting.
-			PropagationTimeout: -1,
-		}, nil
+		provider = &digitalocean.Provider{
+			APIToken: dotoken,
+		}
+	} else if o.LetsEncryptDnsProvider == Azure {
+		provider = &azure.Provider{
+			TenantId:          os.Getenv("AZURE_TENANT_ID"),
+			ClientId:          os.Getenv("AZURE_CLIENT_ID"),
+			ClientSecret:      os.Getenv("AZURE_CLIENT_SECRET"),
+			SubscriptionId:    os.Getenv("AZURE_SUBSCRIPTION_ID"),
+			ResourceGroupName: os.Getenv("AZURE_RESOURCE_GROUP_NAME"),
+		}
+	} else if o.LetsEncryptDnsProvider == Route53 {
+		provider = &route53.Provider{}
+	} else {
+		return nil, fmt.Errorf("dns01 provider %s not supported", o.LetsEncryptDnsProvider)
 	}
-	if o.LetsEncryptDnsProvider == Azure {
-		return &certmagic.DNS01Solver{
-			DNSProvider: &azure.Provider{
-				TenantId:          os.Getenv("AZURE_TENANT_ID"),
-				ClientId:          os.Getenv("AZURE_CLIENT_ID"),
-				ClientSecret:      os.Getenv("AZURE_CLIENT_SECRET"),
-				SubscriptionId:    os.Getenv("AZURE_SUBSCRIPTION_ID"),
-				ResourceGroupName: os.Getenv("AZURE_RESOURCE_GROUP_NAME"),
-			},
-		}, nil
+	var propagationTimeout time.Duration
+	if o.LetsEncryptDnsSkipPropagationCheck {
+		propagationTimeout = -1
+	} else {
+		propagationTimeout = time.Second * time.Duration(o.LetsEncryptDnsPropagationTimeout)
 	}
-	if o.LetsEncryptDnsProvider == Route53 {
-		return &certmagic.DNS01Solver{
-			DNSProvider: &route53.Provider{},
-		}, nil
-	}
-	return nil, fmt.Errorf("dns01 provider %s not supported", o.LetsEncryptDnsProvider)
+	return &certmagic.DNS01Solver{
+		DNSProvider:        provider,
+		TTL:                time.Second * time.Duration(o.LetsEncryptDnsChallengeTTL),
+		PropagationDelay:   time.Second * time.Duration(o.LetsEncryptDnsPropagationDelay),
+		PropagationTimeout: propagationTimeout,
+		Resolvers:          o.LetsEncryptDnsResolvers,
+	}, nil
 }
 
 func (o *NatsMagic) SetLogger() error {
@@ -390,6 +434,32 @@ func (o *NatsMagic) SetupNatsServer(opts *server.Options) (*server.Server, error
 	return ns, nil
 }
 
+func (o *NatsMagic) SetupNatsExporter(serverOpts *server.Options) *exporter.NATSExporter {
+	// Get the default options, and set what you need to.  The listen address and port
+	// is how prometheus can poll for collected data.
+	exporterOpts := &exporter.NATSExporterOptions{
+		NATSServerURL:    fmt.Sprintf("http://127.0.0.1:%d", serverOpts.HTTPPort),
+		ListenAddress:    o.NatsExporterConfig.Host,
+		ListenPort:       o.NatsExporterConfig.Port,
+		ScrapePath:       exporter.DefaultScrapePath,
+		RetryInterval:    time.Duration(exporter.DefaultRetryIntervalSecs) * time.Second,
+		GetVarz:          o.NatsExporterConfig.Features.Varz,
+		GetConnz:         o.NatsExporterConfig.Features.Connz,
+		GetConnzDetailed: o.NatsExporterConfig.Features.ConnzDetailed,
+		GetSubz:          o.NatsExporterConfig.Features.Subz,
+		GetRoutez:        o.NatsExporterConfig.Features.Routez,
+		GetHealthz:       o.NatsExporterConfig.Features.Healthz,
+		GetGatewayz:      o.NatsExporterConfig.Features.Gatewayz,
+		GetLeafz:         o.NatsExporterConfig.Features.Leafz,
+	}
+	// create an exporter instance, ready to be launched.
+	exp := exporter.NewExporter(exporterOpts)
+	collector.RemoveLogger()
+	expLogger := natslogger.New(o.GetLogger("exporter"))
+	collector.SetLogger(expLogger)
+	return exp
+}
+
 // Update embedded NATS server configuration to include credentials
 // for leafnode remote accounts.
 // If no remote leafnode are configured,  or no remote users are provided
@@ -564,6 +634,30 @@ func getCommaSeparateEnv(env string) []string {
 		cleaned[i] = trimmed
 	}
 	return cleaned
+}
+
+func getIntegerEnv(env string) int {
+	value := os.Getenv(env)
+	if value == "" {
+		return 0
+	}
+	intValue, err := strconv.Atoi(value)
+	if err != nil {
+		return 0
+	}
+	return intValue
+}
+
+func getBoolEnv(env string) bool {
+	value := os.Getenv(env)
+	if value == "" {
+		return false
+	}
+	boolValue, err := strconv.ParseBool(value)
+	if err != nil {
+		return false
+	}
+	return boolValue
 }
 
 func writeRemoteUserCreds(system_account_key string, user *RemoteUser) string {
