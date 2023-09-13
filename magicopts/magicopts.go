@@ -32,6 +32,7 @@ func New() (*NatsMagic, error) {
 	opts := &NatsMagic{
 		LetsEncryptEmail:                   os.Getenv("NATS_MAGIC_EMAIL"),
 		LetsEncryptCA:                      os.Getenv("NATS_MAGIC_CA"),
+		LetsEncryptDataDir:                 os.Getenv("NATS_MAGIC_DATA_DIR"),
 		LetsEncryptDnsProvider:             NewDnsProviderFromString(os.Getenv("NATS_MAGIC_PROVIDER")),
 		LetsEncryptDnsSkipPropagationCheck: getBoolEnv("NATS_MAGIC_SKIP_DNS_PROPAGATION_CHECK"),
 		LetsEncryptDnsPropagationDelay:     getIntegerEnv("NATS_MAGIC_DNS_PROPAGATION_DELAY"),
